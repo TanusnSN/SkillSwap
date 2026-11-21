@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkillSwap - Teach. Earn. Learn.</title>
+  <!-- Free Google font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ============ NAVBAR ============ -->
+  <nav class="navbar">
+    <a href="#top" class="logo">
+      <span class="logo-icon">⇄</span> SkillSwap
+    </a>
+    <ul class="nav-links">
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#skills">Browse skills</a></li>
+    </ul>
+    <div class="nav-right">
+      <!-- Shows the student's time-credit balance (filled by JavaScript) -->
+      <div class="credit-pill" title="Your time credits">
+        <span>⏱</span>
+        <strong id="credit-balance">--</strong>
+        <span class="credit-label">credits</span>
+      </div>
+      <div class="avatar" id="user-avatar">Y</div>
+    </div>
+  </nav>
+
+  <!-- ============ HERO ============ -->
+  <header class="hero" id="top">
+    <div class="hero-inner">
+      <span class="badge">🎓 Campus skill-barter platform</span>
+      <h1>Teach what you know.<br><span class="gradient-text">Learn what you need.</span></h1>
+      <p class="hero-sub">
+        Share a skill with a classmate, earn time credits, then spend them
+        to learn something new. No money. Just campus community.
+      </p>
+      <div class="hero-buttons">
+        <a href="#skills" class="btn btn-primary">Explore skills</a>
+        <a href="#how" class="btn btn-ghost">How it works</a>
+      </div>
+      <div class="hero-stats">
+        <div><strong>120+</strong><span>Students</span></div>
+        <div><strong>40+</strong><span>Skills</span></div>
+        <div><strong>300+</strong><span>Sessions</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="section" id="how">
+    <h2 class="section-title">How SkillSwap works</h2>
+    <p class="section-sub">Three simple steps. 1 hour of teaching = credits you can spend.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-icon">🧑‍🏫</div>
+        <h3>1. Teach</h3>
+        <p>List a skill you are good at and host a session.</p>
+      </div>
+      <div class="step">
+        <div class="step-icon">⏱</div>
+        <h3>2. Earn</h3>
+        <p>Every session you teach adds time credits to your wallet.</p>
+      </div>
+      <div class="step">
+        <div class="step-icon">🚀</div>
+        <h3>3. Learn</h3>
+        <p>Spend your credits to book sessions with other students.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BROWSE SKILLS ============ -->
+  <section class="section" id="skills">
+    <h2 class="section-title">Browse skills</h2>
+    <p class="section-sub">Find a teacher and book a session with your credits.</p>
+
+    <!-- Search box -->
+    <div class="search-box">
+      <span>🔍</span>
+      <input type="text" id="skill-search" placeholder="Search skills or teachers...">
+    </div>
+
+    <!-- Category filter buttons (created by JavaScript) -->
+    <div class="chips" id="category-chips"></div>
+
+    <!-- Skill cards (created by JavaScript) -->
+    <div class="skill-grid" id="skill-list"></div>
+
+    <!-- Shown when no skill matches the search -->
+    <div class="empty" id="empty-state" hidden>
+      <div class="empty-icon">🕵️</div>
+      <p>No skills found. Try a different search.</p>
+    </div>
+  </section>
+
+  <!-- ============ BOOKING POPUP ============ -->
+  <div class="modal-overlay" id="modal" hidden>
+    <div class="modal" id="modal-content"></div>
+  </div>
+
+  <!-- ============ TOAST MESSAGES ============ -->
+  <div class="toast-area" id="toast-area"></div>
+
+  <footer class="footer">
+    <p>© 2026 SkillSwap · Built by 4 students as a Java OOP project</p>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
