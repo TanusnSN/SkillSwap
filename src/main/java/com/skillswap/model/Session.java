@@ -11,6 +11,7 @@ public abstract class Session {
     private Skill skill;
     private User teacher;
     private int durationMinutes;
+    private double rating;          // average rating shown on the website
 
     protected Session(int id, Skill skill, User teacher, int durationMinutes) {
         if (durationMinutes <= 0) {
@@ -32,4 +33,7 @@ public abstract class Session {
     public Skill getSkill() { return skill; }
     public User getTeacher() { return teacher; }
     public int getDurationMinutes() { return durationMinutes; }
+
+    public double getRating() { return rating; }
+    public void setRating(double rating) { this.rating = rating; }
 }

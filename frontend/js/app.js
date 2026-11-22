@@ -5,7 +5,7 @@
    ========================================================= */
 
 // ---------- 1. SETTINGS ----------
-const USE_FAKE_DATA = true;                       // change to false when backend is ready
+const USE_FAKE_DATA = false;                       // change to false when backend is ready
 const API_URL = "http://localhost:7070/api";      // Javalin server (confirm port with backend teammate)
 const CURRENT_USER_ID = 1;                        // later this will come from login
 

@@ -24,11 +24,18 @@ public class User implements Matchable, Transactable {
     private final List<String> skillsOffered = new ArrayList<>();
     private final List<String> skillsWanted = new ArrayList<>();
 
+    /** New student: starts with the default credits. */
     public User(int id, String name, String email) {
         this.id = id;
         setName(name);
         this.email = email;
         this.credits = STARTING_CREDITS;
+    }
+
+    /** Existing student loaded from the database (credits already known). */
+    public User(int id, String name, String email, int credits) {
+        this(id, name, email);
+        this.credits = credits;
     }
 
     // ----- getters and setters -----
