@@ -90,7 +90,7 @@ async function refreshWallet() {
 }
 
 async function loadSkills() {
-  state.skills = await api("/skills");
+  state.skills = await api("/skills?userId=" + state.userId);
   renderChips();
   renderSkills();
 }
@@ -117,6 +117,20 @@ function renderChips() {
   });
 }
 
+// The button on a card depends on who you are and the session's state
+function actionButton(s) {
+  if (s.teacherId === state.userId) {
+    return `<button class="btn btn-mine" disabled>Your session</button>`;
+  }
+  if (s.bookedByMe) {
+    return `<button class="btn btn-mine" disabled>Booked \u2713</button>`;
+  }
+  if (s.spotsLeft <= 0) {
+    return `<button class="btn btn-mine" disabled>Full</button>`;
+  }
+  return `<button class="btn btn-primary" onclick="openModal(${s.id})">Book</button>`;
+}
+
 function renderSkills() {
   const text = state.search.toLowerCase();
   const visible = state.skills.filter(s =>
@@ -125,8 +139,10 @@ function renderSkills() {
   );
 
   document.getElementById("skill-list").innerHTML = visible.map(s => {
-    const mine = s.teacherId === state.userId;   // you cannot book your own session
     const rating = s.rating > 0 ? "\u2B50 " + s.rating : "New";
+    const spots = s.sessionType === "GROUP_WORKSHOP"
+      ? s.spotsLeft + " spots left"
+      : (s.spotsLeft > 0 ? "Open" : "Taken");
     return `
     <article class="skill-card">
       <div class="card-top">
@@ -139,14 +155,12 @@ function renderSkills() {
         ${teacherAvatar(s)}
         <div>
           <div class="teacher-name">${escapeHtml(s.teacher)}</div>
-          <div class="teacher-rating">${rating} \u00B7 ${s.duration} min</div>
+          <div class="teacher-rating">${rating} \u00B7 ${s.duration} min \u00B7 ${spots}</div>
         </div>
       </div>
       <div class="card-bottom">
         <div class="cost">${s.creditCost} <small>credits</small></div>
-        ${mine
-          ? `<button class="btn btn-mine" disabled>Your session</button>`
-          : `<button class="btn btn-primary" onclick="openModal(${s.id})">Book</button>`}
+        ${actionButton(s)}
       </div>
     </article>`;
   }).join("");
@@ -196,9 +210,51 @@ async function confirmBooking() {
     closeModal();
     showToast(error.message, "error");   // e.g. the InsufficientCreditsException message
   }
+  await loadSkills();   // refresh spots left and "Booked" buttons
 }
 
-// ---------- 7. TEACH FORM ----------
+// ---------- 7. WALLET AND HISTORY POPUP ----------
+
+async function openWalletModal() {
+  const user = currentUser();
+  if (!user) return;
+
+  document.getElementById("modal-content").innerHTML = `
+    <h3>${escapeHtml(user.name)}'s wallet</h3>
+    <div class="wallet-balance">${state.balance} <small>credits</small></div>
+    <div id="wallet-totals" class="wallet-totals"></div>
+    <div id="history-list" class="history-list"><p class="skill-desc">Loading...</p></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+    </div>
+  `;
+  document.getElementById("modal").hidden = false;
+
+  try {
+    const items = await api("/history/" + state.userId);
+    let earned = 0, spent = 0;
+    items.forEach(i => { if (i.role === "TAUGHT") earned += i.cost; else spent += i.cost; });
+
+    document.getElementById("wallet-totals").textContent =
+      "Earned " + earned + " \u00B7 Spent " + spent;
+
+    document.getElementById("history-list").innerHTML = items.length === 0
+      ? `<p class="skill-desc">No sessions yet. Book one or teach one!</p>`
+      : items.map(i => `
+        <div class="history-row">
+          <div>
+            <div class="history-title">${i.role === "TAUGHT" ? "Taught" : "Learned"} ${escapeHtml(i.skill)}</div>
+            <div class="history-sub">${i.role === "TAUGHT" ? "with student" : "with teacher"} ${escapeHtml(i.person)} \u00B7 ${escapeHtml(i.date.substring(0, 10))}</div>
+          </div>
+          <div class="amount ${i.role === "TAUGHT" ? "pos" : "neg"}">${i.role === "TAUGHT" ? "+" : "-"}${i.cost}</div>
+        </div>`).join("");
+  } catch (error) {
+    document.getElementById("history-list").innerHTML =
+      `<p class="skill-desc">Could not load history.</p>`;
+  }
+}
+
+// ---------- 8. TEACH FORM ----------
 
 function openTeachModal() {
   const user = currentUser();
@@ -296,7 +352,7 @@ async function submitTeachForm(event) {
   }
 }
 
-// ---------- 8. START THE APP ----------
+// ---------- 9. START THE APP ----------
 
 async function init() {
   try {
@@ -315,7 +371,7 @@ document.getElementById("user-select").addEventListener("change", async (e) => {
   state.userId = parseInt(e.target.value);
   saveUser(state.userId);
   await refreshWallet();
-  renderSkills();
+  await loadSkills();
   showToast("You are now " + currentUser().name);
 });
 

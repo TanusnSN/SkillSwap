@@ -12,10 +12,15 @@ import java.sql.Statement;
  */
 public class Database {
 
-    private static final String URL = "jdbc:sqlite:skillswap.db";
+    private static String url = "jdbc:sqlite:skillswap.db";
+
+    /** Lets tests use a separate database file. */
+    public static void setUrl(String newUrl) {
+        url = newUrl;
+    }
 
     public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(URL);
+        return DriverManager.getConnection(url);
     }
 
     /** Create tables if they do not exist, then add sample data if empty. */

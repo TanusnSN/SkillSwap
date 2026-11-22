@@ -28,7 +28,7 @@ public class Main {
         SessionDao sessionDao = new SessionDao(userDao);
         BookingDao bookingDao = new BookingDao();
 
-        WalletService walletService = new WalletService(userDao);
+        WalletService walletService = new WalletService(userDao, bookingDao);
         SessionService sessionService = new SessionService(userDao, sessionDao, bookingDao);
         MatchingService matchingService = new MatchingService(userDao);
 
