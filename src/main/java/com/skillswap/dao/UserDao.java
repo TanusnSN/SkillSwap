@@ -1,66 +1,81 @@
 package com.skillswap.dao;
 
-import com.skillswap.db.Database;
 import com.skillswap.model.User;
-import java.sql.*;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * DAO = Data Access Object. The only class that runs SQL on the users table.
+ */
 public class UserDao {
-    public User createUser(User user) throws SQLException {
-        String sql = "INSERT INTO users (name, email, password, bio) VALUES (?, ?, ?, ?)";
-        try (Connection conn = Database.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            stmt.setString(1, user.name);
-            stmt.setString(2, user.email);
-            stmt.setString(3, user.password);
-            stmt.setString(4, user.bio);
-            stmt.executeUpdate();
 
-            try (ResultSet keys = stmt.getGeneratedKeys()) {
-                if (keys.next()) user.id = keys.getInt(1);
+    /** Returns the user, or null if the id does not exist. */
+    public User findById(int id) {
+        String sql = "SELECT * FROM users WHERE id = ?";
+        try (Connection c = Database.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? mapRow(rs) : null;
             }
-            return user;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 
-    public List<User> getAllUsers() throws SQLException {
+    public List<User> findAll() {
         List<User> users = new ArrayList<>();
-        String sql = "SELECT id, name, email, bio FROM users";
-        try (Connection conn = Database.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+        try (Connection c = Database.getConnection();
+             PreparedStatement ps = c.prepareStatement("SELECT * FROM users");
+             ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                users.add(new User(
-                    rs.getInt("id"),
-                    rs.getString("name"),
-                    rs.getString("email"),
-                    null,
-                    rs.getString("bio")
-                ));
+                users.add(mapRow(rs));
             }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
         return users;
     }
 
-    public User getUserByEmailAndPassword(String email, String password) throws SQLException {
-        String sql = "SELECT id, name, email, bio FROM users WHERE email = ? AND password = ?";
-        try (Connection conn = Database.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, email);
-            stmt.setString(2, password);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return new User(
-                        rs.getInt("id"),
-                        rs.getString("name"),
-                        rs.getString("email"),
-                        null,
-                        rs.getString("bio")
-                    );
-                }
-            }
+    public void updateCredits(int id, int credits) {
+        String sql = "UPDATE users SET credits = ? WHERE id = ?";
+        try (Connection c = Database.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, credits);
+            ps.setInt(2, id);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
-        return null;
+    }
+
+    /** Turns one database row into a User object. */
+    private User mapRow(ResultSet rs) throws SQLException {
+        User user = new User(rs.getInt("id"), rs.getString("name"),
+                rs.getString("email"), rs.getInt("credits"));
+        for (String skill : split(rs.getString("skills_offered"))) {
+            user.addSkillOffered(skill);
+        }
+        for (String skill : split(rs.getString("skills_wanted"))) {
+            user.addSkillWanted(skill);
+        }
+        return user;
+    }
+
+    /** "Java,SQL" -> ["Java", "SQL"] (empty text -> empty list) */
+    private List<String> split(String text) {
+        List<String> result = new ArrayList<>();
+        if (text == null || text.isBlank()) {
+            return result;
+        }
+        for (String part : text.split(",")) {
+            result.add(part.trim());
+        }
+        return result;
     }
 }

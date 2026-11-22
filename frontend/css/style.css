@@ -208,3 +208,31 @@ ul { list-style: none; }
   .hero { padding-top: 60px; }
   .hero-stats { gap: 28px; }
 }
+/* ---------- User switcher + Teach form ---------- */
+.btn-small { padding: 8px 16px; font-size: 0.9rem; }
+.user-select {
+  padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border);
+  background: white; font-family: inherit; font-size: 0.9rem; cursor: pointer;
+}
+a.step { color: inherit; display: block; }
+.step-click { cursor: pointer; border: 2px dashed var(--primary); transition: transform 0.2s, box-shadow 0.2s; }
+.step-click:hover { transform: translateY(-4px); box-shadow: 0 14px 34px rgba(99, 102, 241, 0.18); }
+.btn-mine { background: var(--border); color: var(--muted); box-shadow: none; cursor: not-allowed; }
+.btn-mine:hover { transform: none; }
+
+.modal { max-height: 90vh; overflow-y: auto; }
+.form-field { display: block; margin-bottom: 14px; font-weight: 600; font-size: 0.9rem; }
+.form-field[hidden] { display: none; }
+.form-field input, .form-field select, .form-field textarea {
+  display: block; width: 100%; margin-top: 6px; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 10px;
+  font-family: inherit; font-size: 1rem; font-weight: 400;
+}
+.form-field input:focus, .form-field select:focus, .form-field textarea:focus {
+  outline: 2px solid var(--primary); border-color: transparent;
+}
+.cost-preview {
+  background: #eef2ff; color: var(--primary-dark); padding: 10px 14px;
+  border-radius: 10px; font-weight: 600; margin-bottom: 16px; min-height: 42px;
+}
+@media (max-width: 700px) { .nav-right .btn-small { display: none; } }
