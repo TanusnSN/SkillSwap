@@ -1,76 +1,42 @@
 /* =========================================================
-   SkillSwap frontend logic
-   - While the backend is not ready, we use FAKE data.
-   - Later set USE_FAKE_DATA = false to call the real Java API.
+   SkillSwap frontend logic.
+   Talks to the Java REST API. The Java server also serves this page,
+   so we can use the short address "/api".
    ========================================================= */
 
-// ---------- 1. SETTINGS ----------
-const USE_FAKE_DATA = false;                       // change to false when backend is ready
-const API_URL = "http://localhost:7070/api";      // Javalin server (confirm port with backend teammate)
-const CURRENT_USER_ID = 1;                        // later this will come from login
+const API_URL = "/api";
 
-// ---------- 2. FAKE DATA (same shape as the real API JSON) ----------
-// sessionType: "ONE_ON_ONE" or "GROUP_WORKSHOP"
-// In the real project the Java backend calculates the cost (polymorphism),
-// the frontend only displays what the backend sends.
-const fakeSkills = [
-  { id: 1, name: "Java OOP Basics",       category: "Programming", teacher: "Asha Nair",  rating: 4.9, sessionType: "ONE_ON_ONE",     creditCost: 3, duration: 60, description: "Classes, objects, inheritance and interfaces explained with simple examples." },
-  { id: 2, name: "Calculus Crash Course", category: "Maths",       teacher: "Ravi Kumar", rating: 4.8, sessionType: "GROUP_WORKSHOP", creditCost: 1, duration: 90, description: "Limits, derivatives and integrals before your exam. Bring your doubts." },
-  { id: 3, name: "UI Design with Figma",  category: "Design",      teacher: "Meera Iyer", rating: 4.7, sessionType: "ONE_ON_ONE",     creditCost: 2, duration: 60, description: "Design clean app screens and learn the basics of colour and layout." },
-  { id: 4, name: "Spoken French",         category: "Languages",   teacher: "Karthik S",  rating: 4.6, sessionType: "GROUP_WORKSHOP", creditCost: 1, duration: 60, description: "Everyday conversation practice for complete beginners." },
-  { id: 5, name: "Guitar for Beginners",  category: "Music",       teacher: "Sana Ali",   rating: 5.0, sessionType: "ONE_ON_ONE",     creditCost: 2, duration: 45, description: "Learn your first chords and play a full song in one session." },
-  { id: 6, name: "SQL & Databases",       category: "Programming", teacher: "Dev Patel",  rating: 4.8, sessionType: "GROUP_WORKSHOP", creditCost: 2, duration: 90, description: "Tables, joins and queries. Perfect before your DBMS lab." },
-  { id: 7, name: "Linear Algebra Help",   category: "Maths",       teacher: "Nisha Rao",  rating: 4.5, sessionType: "ONE_ON_ONE",     creditCost: 3, duration: 60, description: "Matrices, vectors and eigenvalues made easy." },
-  { id: 8, name: "Poster & Logo Design",  category: "Design",      teacher: "Arjun M",    rating: 4.7, sessionType: "GROUP_WORKSHOP", creditCost: 1, duration: 60, description: "Make eye-catching posters for your college fest." }
-];
-let fakeWallet = { userId: 1, name: "Yasha", balance: 5 };
-
-// ---------- 3. PAGE STATE ----------
+// ---------- 1. PAGE STATE ----------
 const state = {
-  skills: [],          // all skills from API
-  balance: 0,          // student's credits
-  category: "All",     // selected filter
-  search: "",          // text typed in search box
-  selected: null       // skill chosen in the popup
+  skills: [],        // all sessions from the API
+  users: [],         // all students (for the switcher)
+  userId: 1,         // the student currently using the site
+  balance: 0,        // that student's credits
+  category: "All",   // selected filter
+  search: "",        // text typed in the search box
+  selected: null     // session chosen in the booking popup
 };
 
-// ---------- 4. API FUNCTIONS (fake or real) ----------
+// ---------- 2. API HELPERS ----------
 
-// GET /api/skills
-async function fetchSkills() {
-  if (USE_FAKE_DATA) return fakeSkills;
-  const res = await fetch(API_URL + "/skills");
-  return await res.json();
+// Calls the API, returns JSON, throws an Error with the server's message on failure
+async function api(path, options) {
+  const res = await fetch(API_URL + path, options);
+  let data = {};
+  try { data = await res.json(); } catch (e) { /* empty body */ }
+  if (!res.ok) throw new Error(data.error || "Something went wrong");
+  return data;
 }
 
-// GET /api/wallet/{userId}
-async function fetchWallet() {
-  if (USE_FAKE_DATA) return fakeWallet;
-  const res = await fetch(API_URL + "/wallet/" + CURRENT_USER_ID);
-  return await res.json();
-}
-
-// POST /api/sessions   body: { userId, skillId }
-// Backend throws InsufficientCreditsException -> we get an error message back
-async function bookSession(skill) {
-  if (USE_FAKE_DATA) {
-    if (fakeWallet.balance < skill.creditCost) {
-      throw new Error("Not enough credits. Teach a session to earn more!");
-    }
-    fakeWallet.balance -= skill.creditCost;
-    return fakeWallet;
-  }
-  const res = await fetch(API_URL + "/sessions", {
+function postJson(path, body) {
+  return api(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId: CURRENT_USER_ID, skillId: skill.id })
+    body: JSON.stringify(body)
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Booking failed");
-  return data;   // expected: { balance: 2 }
 }
 
-// ---------- 5. SMALL HELPER FUNCTIONS ----------
+// ---------- 3. SMALL HELPERS ----------
 
 // Stops special characters in data from breaking the page
 function escapeHtml(text) {
@@ -79,18 +45,15 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-// Nice label for the session type
 function typeLabel(type) {
   return type === "GROUP_WORKSHOP" ? "Group workshop" : "1-on-1";
 }
 
-// Round coloured circle with the teacher's first letter
 function teacherAvatar(skill) {
-  const colour = "hsl(" + ((skill.id * 47) % 360) + ", 65%, 50%)";
+  const colour = "hsl(" + ((skill.teacherId * 47) % 360) + ", 65%, 50%)";
   return `<div class="teacher-avatar" style="background:${colour}">${escapeHtml(skill.teacher[0])}</div>`;
 }
 
-// Small popup message at the bottom right
 function showToast(message, type) {
   const toast = document.createElement("div");
   toast.className = "toast " + (type || "");
@@ -99,7 +62,6 @@ function showToast(message, type) {
   setTimeout(() => toast.remove(), 3500);
 }
 
-// Update the credit number in the navbar with a small bounce
 function updateBalance(balance) {
   state.balance = balance;
   document.getElementById("credit-balance").textContent = balance;
@@ -108,9 +70,40 @@ function updateBalance(balance) {
   setTimeout(() => pill.classList.remove("bump"), 300);
 }
 
-// ---------- 6. DRAWING THE PAGE ----------
+function currentUser() {
+  return state.users.find(u => u.id === state.userId);
+}
 
-// Category buttons: All + every category found in the data
+// Remember which student was selected (optional convenience)
+function loadSavedUser() {
+  try { return parseInt(localStorage.getItem("skillswapUser")) || 1; } catch (e) { return 1; }
+}
+function saveUser(id) {
+  try { localStorage.setItem("skillswapUser", String(id)); } catch (e) { /* ignore */ }
+}
+
+// ---------- 4. LOADING DATA ----------
+
+async function refreshWallet() {
+  const wallet = await api("/wallet/" + state.userId);
+  updateBalance(wallet.balance);
+}
+
+async function loadSkills() {
+  state.skills = await api("/skills");
+  renderChips();
+  renderSkills();
+}
+
+// ---------- 5. DRAWING THE PAGE ----------
+
+function renderUserSelect() {
+  const select = document.getElementById("user-select");
+  select.innerHTML = state.users.map(u =>
+    `<option value="${u.id}" ${u.id === state.userId ? "selected" : ""}>${escapeHtml(u.name)}</option>`
+  ).join("");
+}
+
 function renderChips() {
   const categories = ["All", ...new Set(state.skills.map(s => s.category))];
   const box = document.getElementById("category-chips");
@@ -124,7 +117,6 @@ function renderChips() {
   });
 }
 
-// Skill cards, filtered by category and search text
 function renderSkills() {
   const text = state.search.toLowerCase();
   const visible = state.skills.filter(s =>
@@ -132,8 +124,10 @@ function renderSkills() {
     (s.name.toLowerCase().includes(text) || s.teacher.toLowerCase().includes(text))
   );
 
-  const grid = document.getElementById("skill-list");
-  grid.innerHTML = visible.map(s => `
+  document.getElementById("skill-list").innerHTML = visible.map(s => {
+    const mine = s.teacherId === state.userId;   // you cannot book your own session
+    const rating = s.rating > 0 ? "\u2B50 " + s.rating : "New";
+    return `
     <article class="skill-card">
       <div class="card-top">
         <span class="tag">${escapeHtml(s.category)}</span>
@@ -145,32 +139,33 @@ function renderSkills() {
         ${teacherAvatar(s)}
         <div>
           <div class="teacher-name">${escapeHtml(s.teacher)}</div>
-          <div class="teacher-rating">⭐ ${s.rating} · ${s.duration} min</div>
+          <div class="teacher-rating">${rating} \u00B7 ${s.duration} min</div>
         </div>
       </div>
       <div class="card-bottom">
         <div class="cost">${s.creditCost} <small>credits</small></div>
-        <button class="btn btn-primary" onclick="openModal(${s.id})">Book</button>
+        ${mine
+          ? `<button class="btn btn-mine" disabled>Your session</button>`
+          : `<button class="btn btn-primary" onclick="openModal(${s.id})">Book</button>`}
       </div>
-    </article>
-  `).join("");
+    </article>`;
+  }).join("");
 
-  // Show the "nothing found" message if the list is empty
   document.getElementById("empty-state").hidden = visible.length > 0;
 }
 
-// ---------- 7. BOOKING POPUP ----------
+// ---------- 6. BOOKING POPUP ----------
 
 function openModal(skillId) {
   const skill = state.skills.find(s => s.id === skillId);
   state.selected = skill;
-  const left = state.balance - skill.creditCost;   // credits after booking
+  const left = state.balance - skill.creditCost;
   const notEnough = left < 0;
 
   document.getElementById("modal-content").innerHTML = `
     <span class="tag ${skill.sessionType === "GROUP_WORKSHOP" ? "group" : ""}">${typeLabel(skill.sessionType)}</span>
     <h3>${escapeHtml(skill.name)}</h3>
-    <p class="skill-desc">with ${escapeHtml(skill.teacher)} · ${skill.duration} min</p>
+    <p class="skill-desc">with ${escapeHtml(skill.teacher)} \u00B7 ${skill.duration} min</p>
     <div class="modal-rows">
       <div class="modal-row"><span>Session cost</span><strong>${skill.creditCost} credits</strong></div>
       <div class="modal-row"><span>Your balance</span><strong>${state.balance} credits</strong></div>
@@ -193,13 +188,111 @@ async function confirmBooking() {
   btn.disabled = true;
   btn.textContent = "Booking...";
   try {
-    const result = await bookSession(state.selected);
+    const result = await postJson("/sessions", { userId: state.userId, skillId: state.selected.id });
     updateBalance(result.balance);
     closeModal();
-    showToast("Booked " + state.selected.name + " 🎉", "success");
+    showToast("Booked " + state.selected.name + " \uD83C\uDF89", "success");
   } catch (error) {
     closeModal();
-    showToast(error.message, "error");   // e.g. InsufficientCreditsException message
+    showToast(error.message, "error");   // e.g. the InsufficientCreditsException message
+  }
+}
+
+// ---------- 7. TEACH FORM ----------
+
+function openTeachModal() {
+  const user = currentUser();
+  document.getElementById("modal-content").innerHTML = `
+    <h3>Teach a skill</h3>
+    <p class="skill-desc">Hosting as <strong>${escapeHtml(user ? user.name : "")}</strong>.
+       You earn credits every time a student books.</p>
+    <form id="teach-form">
+      <label class="form-field">Skill name
+        <input name="name" required maxlength="60" placeholder="e.g. Python for Beginners">
+      </label>
+      <label class="form-field">Category
+        <select name="category">
+          <option>Programming</option><option>Maths</option><option>Design</option>
+          <option>Languages</option><option>Music</option><option>Other</option>
+        </select>
+      </label>
+      <label class="form-field">Description
+        <textarea name="description" rows="3" maxlength="200" placeholder="What will students learn?"></textarea>
+      </label>
+      <label class="form-field">Session type
+        <select name="sessionType" id="teach-type">
+          <option value="ONE_ON_ONE">1-on-1 (one student)</option>
+          <option value="GROUP_WORKSHOP">Group workshop (many students)</option>
+        </select>
+      </label>
+      <label class="form-field">Duration
+        <select name="duration" id="teach-duration">
+          <option value="30">30 minutes</option>
+          <option value="60" selected>60 minutes</option>
+          <option value="90">90 minutes</option>
+          <option value="120">120 minutes</option>
+        </select>
+      </label>
+      <label class="form-field" id="max-label" hidden>Maximum students
+        <input type="number" name="maxParticipants" value="10" min="2" max="50">
+      </label>
+      <p class="cost-preview" id="cost-preview"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Publish session</button>
+      </div>
+    </form>
+  `;
+  document.getElementById("modal").hidden = false;
+
+  document.getElementById("teach-type").addEventListener("change", onTeachFormChange);
+  document.getElementById("teach-duration").addEventListener("change", onTeachFormChange);
+  document.getElementById("teach-form").addEventListener("submit", submitTeachForm);
+  onTeachFormChange();
+}
+
+// Show/hide the "max students" box and ask the Java server for the cost
+async function onTeachFormChange() {
+  const type = document.getElementById("teach-type").value;
+  const duration = document.getElementById("teach-duration").value;
+  document.getElementById("max-label").hidden = (type !== "GROUP_WORKSHOP");
+
+  const preview = document.getElementById("cost-preview");
+  try {
+    const result = await api("/cost?type=" + type + "&duration=" + duration);
+    preview.textContent = "Each student pays " + result.creditCost + " credits. You earn the same.";
+  } catch (error) {
+    preview.textContent = "";
+  }
+}
+
+async function submitTeachForm(event) {
+  event.preventDefault();
+  const form = event.target;
+  const data = new FormData(form);
+  const button = form.querySelector("button[type=submit]");
+  button.disabled = true;
+
+  try {
+    await postJson("/teach", {
+      userId: state.userId,
+      name: data.get("name"),
+      category: data.get("category"),
+      description: data.get("description"),
+      sessionType: data.get("sessionType"),
+      duration: parseInt(data.get("duration")),
+      maxParticipants: parseInt(data.get("maxParticipants"))
+    });
+    closeModal();
+    showToast("Your session is live! \uD83D\uDE80", "success");
+    state.category = "All";
+    state.search = "";
+    document.getElementById("skill-search").value = "";
+    await loadSkills();
+    document.getElementById("skills").scrollIntoView();
+  } catch (error) {
+    showToast(error.message, "error");
+    button.disabled = false;
   }
 }
 
@@ -207,18 +300,26 @@ async function confirmBooking() {
 
 async function init() {
   try {
-    const [skills, wallet] = await Promise.all([fetchSkills(), fetchWallet()]);
-    state.skills = skills;
-    updateBalance(wallet.balance);
-    document.getElementById("user-avatar").textContent = wallet.name[0];
-    renderChips();
-    renderSkills();
+    state.users = await api("/users");
+    const saved = loadSavedUser();
+    state.userId = state.users.some(u => u.id === saved) ? saved : state.users[0].id;
+    renderUserSelect();
+    await Promise.all([refreshWallet(), loadSkills()]);
   } catch (error) {
-    showToast("Could not load data. Is the backend running?", "error");
+    showToast("Could not load data. Is the Java server running?", "error");
   }
 }
 
-// Search box: re-draw cards every time the user types
+// Switching student
+document.getElementById("user-select").addEventListener("change", async (e) => {
+  state.userId = parseInt(e.target.value);
+  saveUser(state.userId);
+  await refreshWallet();
+  renderSkills();
+  showToast("You are now " + currentUser().name);
+});
+
+// Search box
 document.getElementById("skill-search").addEventListener("input", (e) => {
   state.search = e.target.value;
   renderSkills();

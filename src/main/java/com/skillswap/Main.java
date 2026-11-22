@@ -37,7 +37,7 @@ public class Main {
         });
 
         app.get("/api/health", ctx -> ctx.json(Map.of("status", "ok")));
-        new Routes(walletService, sessionService, matchingService).register(app);
+        new Routes(walletService, sessionService, matchingService, userDao).register(app);
 
         app.start(7070);
     }
