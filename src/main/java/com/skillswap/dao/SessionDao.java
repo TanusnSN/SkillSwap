@@ -10,11 +10,12 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Loads sessions from the database and builds the correct subclass
+ * Loads and saves sessions. Builds the correct subclass
  * (OneOnOneSession or GroupWorkshop) for each row.
  */
 public class SessionDao {
@@ -51,6 +52,44 @@ public class SessionDao {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? mapRow(rs) : null;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /** Saves a new session (and its skill). Returns the new session id. */
+    public int insert(Session session) {
+        int maxParticipants = (session instanceof GroupWorkshop g) ? g.getMaxParticipants() : 1;
+
+        try (Connection c = Database.getConnection()) {
+            int skillId;
+            String skillSql = "INSERT INTO skills (name, category, description) VALUES (?, ?, ?)";
+            try (PreparedStatement ps = c.prepareStatement(skillSql, Statement.RETURN_GENERATED_KEYS)) {
+                ps.setString(1, session.getSkill().getName());
+                ps.setString(2, session.getSkill().getCategory());
+                ps.setString(3, session.getSkill().getDescription());
+                ps.executeUpdate();
+                try (ResultSet keys = ps.getGeneratedKeys()) {
+                    keys.next();
+                    skillId = keys.getInt(1);
+                }
+            }
+
+            String sessionSql = "INSERT INTO sessions "
+                    + "(skill_id, teacher_id, type, duration, max_participants, rating) "
+                    + "VALUES (?, ?, ?, ?, ?, 0)";
+            try (PreparedStatement ps = c.prepareStatement(sessionSql, Statement.RETURN_GENERATED_KEYS)) {
+                ps.setInt(1, skillId);
+                ps.setInt(2, session.getTeacher().getId());
+                ps.setString(3, session.getSessionType());
+                ps.setInt(4, session.getDurationMinutes());
+                ps.setInt(5, maxParticipants);
+                ps.executeUpdate();
+                try (ResultSet keys = ps.getGeneratedKeys()) {
+                    keys.next();
+                    return keys.getInt(1);
+                }
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
