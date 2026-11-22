@@ -1,5 +1,6 @@
 package com.skillswap.api;
 
+import com.skillswap.dao.UserDao;
 import com.skillswap.exception.InsufficientCreditsException;
 import com.skillswap.exception.MatchNotFoundException;
 import com.skillswap.model.Session;
@@ -7,7 +8,6 @@ import com.skillswap.model.User;
 import com.skillswap.service.MatchingService;
 import com.skillswap.service.SessionService;
 import com.skillswap.service.WalletService;
-import com.skillswap.dao.UserDao;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
 
@@ -45,6 +45,7 @@ public class Routes {
         app.get("/api/skills", this::listSkills);
         app.get("/api/users", this::listUsers);
         app.get("/api/wallet/{userId}", this::getWallet);
+        app.get("/api/history/{userId}", this::getHistory);
         app.get("/api/cost", this::previewCost);
         app.get("/api/match", this::findMatch);
         app.post("/api/sessions", this::bookSession);
@@ -75,11 +76,17 @@ public class Routes {
         return item;
     }
 
-    // GET /api/skills
+    // GET /api/skills?userId=1   (userId is optional: it adds "bookedByMe")
     private void listSkills(Context ctx) {
+        String userParam = ctx.queryParam("userId");
+        Integer userId = (userParam == null) ? null : Integer.valueOf(userParam);
+
         List<Map<String, Object>> result = new ArrayList<>();
         for (Session s : sessionService.listSessions()) {
-            result.add(toJson(s));
+            Map<String, Object> item = toJson(s);
+            item.put("spotsLeft", sessionService.spotsLeft(s));
+            item.put("bookedByMe", userId != null && sessionService.hasBooked(userId, s.getId()));
+            result.add(item);
         }
         ctx.json(result);
     }
@@ -103,6 +110,12 @@ public class Routes {
         User user = walletService.getUser(userId);
         ctx.json(Map.of("userId", user.getId(), "name", user.getName(),
                 "balance", user.getBalance()));
+    }
+
+    // GET /api/history/{userId}
+    private void getHistory(Context ctx) {
+        int userId = Integer.parseInt(ctx.pathParam("userId"));
+        ctx.json(walletService.getHistory(userId));
     }
 
     // GET /api/cost?type=ONE_ON_ONE&duration=60

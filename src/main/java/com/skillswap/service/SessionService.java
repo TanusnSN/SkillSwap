@@ -48,6 +48,16 @@ public class SessionService {
         return buildSession(0, null, null, type, duration, 2).calculateCost();
     }
 
+    /** Free places left: a 1-on-1 has 1 place, a group workshop has its maximum. */
+    public int spotsLeft(Session session) {
+        int capacity = (session instanceof GroupWorkshop g) ? g.getMaxParticipants() : 1;
+        return capacity - bookingDao.countForSession(session.getId());
+    }
+
+    public boolean hasBooked(int studentId, int sessionId) {
+        return bookingDao.hasBooked(studentId, sessionId);
+    }
+
     /** A student hosts a new session. */
     public Session createSession(int teacherId, String name, String category, String description,
                                  String type, int duration, int maxParticipants) {
@@ -90,6 +100,13 @@ public class SessionService {
         User teacher = session.getTeacher();
         if (teacher.getId() == studentId) {
             throw new IllegalArgumentException("You cannot book your own session");
+        }
+        if (bookingDao.hasBooked(studentId, sessionId)) {
+            throw new IllegalArgumentException("You already booked this session");
+        }
+        if (spotsLeft(session) <= 0) {
+            throw new IllegalArgumentException(session instanceof GroupWorkshop
+                    ? "This workshop is full" : "This session is already taken");
         }
 
         int cost = session.calculateCost();   // polymorphism: each session type has its own rule
